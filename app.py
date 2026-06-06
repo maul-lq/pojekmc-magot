@@ -165,7 +165,7 @@ st.markdown(
         }
         .kpi-grid {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(6, minmax(0, 1fr));
             gap: 0.9rem;
             margin: 1rem 0 0.4rem 0;
         }
@@ -438,20 +438,24 @@ class SensorStore:
             # Ubah "temp" menjadi "temperature" dan "hum" menjadi "humidity"
             temp = float(payload["temperature"])
             hum = float(payload["humidity"])
+            gas = float(payload.get("gas", 0.0))
+            buzzer = str(payload.get("buzzer", "OFF"))
         except (KeyError, TypeError, ValueError):
             return None
-    
+
         if not np.isfinite(temp) or not np.isfinite(hum) or not 0 <= hum <= 100:
             return None
-    
+
         timestamp = _coerce_timestamp(payload.get("timestamp") or payload.get("time"))
         if timestamp is None:
             return None
-    
+
         return {
             "timestamp": timestamp,
-            "temp": temp,  # Tetap gunakan 'temp' agar dashboard/chart tidak error
-            "hum": hum,    # Tetap gunakan 'hum' agar dashboard/chart tidak error
+            "temp": temp,
+            "hum": hum,
+            "gas": gas,
+            "buzzer": buzzer,
         }
 
     def _append_to_disk(self, sample: dict) -> None:
@@ -485,13 +489,15 @@ class SensorStore:
             rows = list(self.history)
 
         if not rows:
-            return pd.DataFrame(columns=["timestamp", "temp", "hum"])
+            return pd.DataFrame(columns=["timestamp", "temp", "hum", "gas", "buzzer"])
 
         frame = pd.DataFrame(rows)
         frame["timestamp"] = pd.to_datetime(frame["timestamp"], errors="coerce", utc=True)
         frame["temp"] = pd.to_numeric(frame["temp"], errors="coerce")
         frame["hum"] = pd.to_numeric(frame["hum"], errors="coerce")
-        frame = frame.dropna(subset=["timestamp", "temp", "hum"])
+        frame["gas"] = pd.to_numeric(frame["gas"], errors="coerce")
+        # buzzer remains as is (string)
+        frame = frame.dropna(subset=["timestamp", "temp", "hum", "gas"])
         frame = frame.sort_values("timestamp").reset_index(drop=True)
         return frame
 
@@ -942,16 +948,9 @@ def main() -> None:
 
 
     if auto_refresh:
-        components.html(
-            f"""
-            <script>
-                window.setTimeout(function() {{
-                    window.parent.location.reload();
-                }}, {refresh_seconds * 1000});
-            </script>
-            """,
-            height=0,
-        )
+        import time
+        time.sleep(refresh_seconds)
+        st.rerun()
 
 
     frame = store.snapshot()
@@ -1025,6 +1024,16 @@ def main() -> None:
                 <div class="kpi-value">{latest['hum']:.2f} %</div>
                 <div class="kpi-delta {hum_delta_tone}">{hum_delta_text or '&nbsp;'}</div>
                 <div class="kpi-foot">Tren: {trend_hum}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Gas</div>
+                <div class="kpi-value">{latest['gas']:.0f}</div>
+                <div class="kpi-foot">Status: {"Normal" if latest['gas'] < 2000 else "Bahaya"}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Buzzer</div>
+                <div class="kpi-value">{latest['buzzer']}</div>
+                <div class="kpi-foot">Status terkini</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-title">Dew point</div>
