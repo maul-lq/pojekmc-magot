@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+  <meta charset="utf-8">
+  <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#185d3d">
+  <meta name="description" content="Monitoring real-time sensor Smart Maggot Farming.">
+  <title>Monitoring · Smart Maggot Farming</title>
+  <link rel="stylesheet" href="/css/output.css">
+</head>
+
+<body class="app-shell">
+  <div id="mobile-overlay" class="mobile-overlay"></div>
+  <aside id="sidebar" class="sidebar"><button id="close-menu"
+      class="absolute right-4 top-4 text-farm-100 lg:hidden">✕</button>
+    <div class="mb-8 flex items-center gap-3 px-2">
+      <div class="grid h-12 w-12 place-items-center rounded-2xl bg-leaf text-2xl shadow-lg">🌱</div>
+      <div>
+        <p class="text-[10px] font-black tracking-[.18em] text-farm-200">SMART MAGGOT</p>
+        <h1 class="font-black">Farming Monitor</h1>
+      </div>
+    </div>
+    <nav class="space-y-2"><a data-nav class="sidebar-link" href="/dashboard">▦ &nbsp; Dashboard</a><a data-nav
+        class="sidebar-link" href="/monitor">◉ &nbsp; Monitoring</a><a data-nav class="sidebar-link" href="/laporan">▤
+        &nbsp; Laporan Sensor</a></nav>
+    <div class="mt-auto rounded-2xl bg-white/10 p-4">
+      <p class="text-xs text-farm-200">Masuk sebagai</p>
+      <p data-username class="mt-1 truncate font-extrabold">Admin</p><button id="logout-button"
+        class="mt-4 w-full rounded-xl bg-white/10 px-3 py-2 text-left text-sm font-bold hover:bg-white/20">↪ &nbsp;
+        Keluar</button>
+    </div>
+  </aside>
+  <main class="main-content">
+    <header class="mb-7 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3"><button id="menu-button"
+          class="grid h-11 w-11 place-items-center rounded-xl bg-white shadow lg:hidden">☰</button>
+        <div>
+          <p class="text-xs font-black uppercase tracking-[.18em] text-farm-600">Live sensor</p>
+          <h2 class="text-xl font-black text-slate-900 sm:text-2xl">Monitoring Data Real-time</h2>
+        </div>
+      </div><span id="monitor-status" class="status-badge status-neutral">Memuat...</span>
+    </header>
+    <section class="mb-5 grid gap-4 sm:grid-cols-3">
+      <article class="panel p-4">
+        <p class="text-xs font-bold text-slate-400">Pembaruan terakhir</p>
+        <p id="last-update" class="mt-2 font-black text-slate-800">—</p>
+      </article>
+      <article class="panel p-4">
+        <p class="text-xs font-bold text-slate-400">Status kondisi</p>
+        <div class="mt-2"><span id="monitor-condition" class="status-badge status-neutral">—</span></div>
+      </article>
+      <article class="panel p-4">
+        <p class="text-xs font-bold text-slate-400">Status buzzer</p>
+        <p id="monitor-buzzer" class="mt-2 text-xl font-black text-slate-800">—</p>
+      </article>
+    </section>
+    <section class="grid gap-5 xl:grid-cols-2">
+      <article class="panel">
+        <h3 class="section-title">Grafik suhu DHT22</h3>
+        <p class="mb-4 mt-1 text-xs text-slate-400">Normal hanya di atas 29°C dan di bawah 39°C</p>
+        <div id="temperature-chart" class="chart-host"></div>
+      </article>
+      <article class="panel">
+        <h3 class="section-title">Grafik kelembapan DHT22</h3>
+        <p class="mb-4 mt-1 text-xs text-slate-400">Ditampilkan tanpa ambang abnormal</p>
+        <div id="humidity-chart" class="chart-host"></div>
+      </article>
+      <article class="panel xl:col-span-2">
+        <h3 class="section-title">Grafik kualitas udara MQ</h3>
+        <p class="mb-4 mt-1 text-xs text-slate-400">Abnormal jika nilai gas lebih dari 2.000</p>
+        <div id="gas-chart" class="chart-host"></div>
+      </article>
+    </section>
+    <article class="panel mt-5">
+      <div class="mb-5">
+        <h3 class="section-title">Riwayat sensor terbaru</h3>
+        <p class="mt-1 text-xs text-slate-400">Menampilkan hingga 25 data terbaru dari jendela monitoring</p>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Waktu</th>
+              <th>Suhu</th>
+              <th>Kelembapan</th>
+              <th>Gas</th>
+              <th>Buzzer</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="monitor-table">
+            <tr>
+              <td colspan="6">Memuat...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </main>
+  <script type="module" src="/js/monitor.js"></script>
+</body>
+
+</html>

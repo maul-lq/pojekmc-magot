@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+  <meta charset="utf-8">
+  <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#185d3d">
+  <meta name="description" content="Login pengelola untuk dashboard monitoring Smart Maggot Farming.">
+  <title>Login · Smart Maggot Farming</title>
+  <link rel="stylesheet" href="/css/output.css">
+</head>
+
+<body>
+  <main class="grid min-h-screen lg:grid-cols-[1.1fr_.9fr]">
+    <section
+      class="relative hidden overflow-hidden bg-linear-to-br from-farm-700 via-farm-800 to-farm-900 p-12 text-white lg:flex lg:flex-col lg:justify-between">
+      <div class="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-leaf/20 blur-3xl"></div>
+      <div class="absolute -bottom-32 -left-20 h-96 w-96 rounded-full bg-farm-400/20 blur-3xl"></div>
+      <div class="relative flex items-center gap-4">
+        <div class="grid h-14 w-14 place-items-center rounded-2xl bg-leaf text-3xl shadow-xl">🌱</div>
+        <div>
+          <p class="text-xs font-black tracking-[.2em] text-farm-200">SMART FARMING</p>
+          <h1 class="text-2xl font-black">Maggot Monitor</h1>
+        </div>
+      </div>
+      <div class="relative max-w-xl">
+        <p class="mb-4 inline-flex rounded-full bg-white/10 px-4 py-2 text-sm font-bold text-farm-100">DHT22 · MQ Sensor
+          · Buzzer</p>
+        <h2 class="text-5xl font-black leading-tight">Pantau kondisi budidaya secara lebih cepat dan terukur.</h2>
+        <p class="mt-6 max-w-lg text-base leading-7 text-farm-100">Menggunakan teknologi iot ESP32, Mosquitto, MySQL, Python. Memiliki fitur seperti dashboard, monitor real time, sama laporan.</p>
+      </div>
+      <div class="relative grid grid-cols-3 gap-3">
+        <div class="rounded-2xl bg-white/10 p-4"><b class="text-2xl">2 dtk</b>
+          <p class="mt-1 text-xs text-farm-200">Interval monitoring</p>
+        </div>
+        <div class="rounded-2xl bg-white/10 p-4"><b class="text-2xl">24/7</b>
+          <p class="mt-1 text-xs text-farm-200">Riwayat sensor</p>
+        </div>
+        <div class="rounded-2xl bg-white/10 p-4"><b class="text-2xl">PDF/XLSX</b>
+          <p class="mt-1 text-xs text-farm-200">Export laporan</p>
+        </div>
+      </div>
+    </section>
+
+    <section
+      class="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_right,rgba(168,204,69,.18),transparent_35%)] p-5 sm:p-10">
+      <div class="w-full max-w-md">
+        <div class="mb-8 flex items-center gap-3 lg:hidden">
+          <div class="grid h-12 w-12 place-items-center rounded-2xl bg-leaf text-2xl">🌱</div>
+          <div>
+            <p class="text-xs font-black tracking-[.18em] text-farm-600">SMART FARMING</p>
+            <h1 class="font-black text-farm-900">Maggot Monitor</h1>
+          </div>
+        </div>
+        <div class="panel p-7 sm:p-9">
+          <div class="mb-8">
+            <span class="status-badge status-normal mb-4">● Sistem monitoring</span>
+            <h2 class="text-3xl font-black tracking-tight text-slate-900">Selamat datang</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-500">Masuk menggunakan akun admin untuk mengakses data sensor.
+            </p>
+          </div>
+          <form id="login-form" class="space-y-5">
+            <label class="block">
+              <span class="mb-2 block text-sm font-bold text-slate-700">Username</span>
+              <input class="field" name="username" autocomplete="username" required placeholder="Masukkan username">
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-sm font-bold text-slate-700">Password</span>
+              <input class="field" type="password" name="password" autocomplete="current-password" required
+                placeholder="Masukkan password">
+            </label>
+            <div id="login-error" class="hidden rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700"
+              role="alert"></div>
+            <button id="login-button" class="primary-button w-full" type="submit">Masuk ke Dashboard</button>
+          </form>
+        </div>
+        <p class="mt-5 text-center text-xs text-slate-400">Tidak tersedia registrasi publik · Akses khusus pengelola</p>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="/js/login.js"></script>
+</body>
+
+</html>
