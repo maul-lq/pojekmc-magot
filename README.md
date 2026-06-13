@@ -255,6 +255,22 @@ git diff --check
 
 `pytest.ini` membatasi pencarian test ke folder `tests`, sehingga pytest tidak mengumpulkan test milik package virtual environment.
 
+### Mengisi data dummy
+
+Setelah aplikasi pernah dijalankan agar tabel database terbentuk, data testing
+dapat diisi menggunakan `dummy.sql`:
+
+```powershell
+mysql -u root -p db_mocom_maggot -e "source dummy.sql"
+```
+
+Konfigurasi default menambahkan 336 pembacaan untuk tujuh hari terakhir dengan
+interval 30 menit. Data mencakup kondisi normal, suhu dan gas abnormal, masalah
+DHT22, buzzer tidak konsisten, serta notifikasi transisi. Ubah argumen pada
+`CALL seed_dummy_sensor_data(7, 30);` di bagian bawah file untuk menyesuaikan
+jumlah hari dan interval. Script menambahkan data tanpa menghapus data yang
+sudah ada, sehingga sebaiknya digunakan hanya pada database development/testing.
+
 ## Penyimpanan data
 
 - Timestamp disimpan dalam UTC.
