@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+  <meta charset="utf-8">
+  <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#185d3d">
+  <meta name="description" content="Dashboard sensor suhu, kelembapan, gas, dan buzzer Smart Maggot Farming.">
+  <title>Dashboard · Smart Maggot Farming</title>
+  <link rel="stylesheet" href="/css/output.css">
+</head>
+
+<body class="app-shell">
+  <div id="mobile-overlay" class="mobile-overlay"></div>
+  <aside id="sidebar" class="sidebar">
+    <button id="close-menu" class="absolute right-4 top-4 text-farm-100 lg:hidden" aria-label="Tutup menu">✕</button>
+    <div class="mb-8 flex items-center gap-3 px-2">
+      <div class="grid h-12 w-12 place-items-center rounded-2xl bg-leaf text-2xl shadow-lg">🌱</div>
+      <div>
+        <p class="text-[10px] font-black tracking-[.18em] text-farm-200">SMART MAGGOT</p>
+        <h1 class="font-black">Farming Monitor</h1>
+      </div>
+    </div>
+    <nav class="space-y-2"><a data-nav class="sidebar-link" href="/dashboard"><span>▦</span> Dashboard</a><a data-nav
+        class="sidebar-link" href="/monitor"><span>◉</span> Monitoring</a><a data-nav class="sidebar-link"
+        href="/laporan"><span>▤</span> Laporan Sensor</a></nav>
+    <div class="mt-auto rounded-2xl bg-white/10 p-4">
+      <p class="text-xs text-farm-200">Masuk sebagai</p>
+      <p data-username class="mt-1 truncate font-extrabold">Admin</p><button id="logout-button"
+        class="mt-4 w-full rounded-xl bg-white/10 px-3 py-2 text-left text-sm font-bold hover:bg-white/20">↪ &nbsp;
+        Keluar</button>
+    </div>
+  </aside>
+  <main class="main-content">
+    <header class="mb-7 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3"><button id="menu-button"
+          class="grid h-11 w-11 place-items-center rounded-xl bg-white shadow lg:hidden"
+          aria-label="Buka menu">☰</button>
+        <div>
+          <p class="text-xs font-black uppercase tracking-[.18em] text-farm-600">Ikhtisar hari ini</p>
+          <h2 class="text-xl font-black text-slate-900 sm:text-2xl">Smart Maggot Farming Dashboard</h2>
+        </div>
+      </div>
+      <span id="data-status" class="status-badge status-neutral">Memuat...</span>
+    </header>
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <article class="metric-card">
+        <div class="flex items-start justify-between">
+          <div class="metric-icon">🌡️</div><span data-reading-status class="status-badge status-neutral">—</span>
+        </div>
+        <p class="metric-value" id="temperature-value">—</p>
+        <p class="mt-1 text-sm font-semibold text-slate-500">Suhu DHT22</p>
+        <div class="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-emerald-100/50"></div>
+      </article>
+      <article class="metric-card">
+        <div class="flex items-start justify-between">
+          <div class="metric-icon">💧</div><span class="status-badge status-normal">DHT22</span>
+        </div>
+        <p class="metric-value" id="humidity-value">—</p>
+        <p class="mt-1 text-sm font-semibold text-slate-500">Kelembapan</p>
+        <div class="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-sky-100/60"></div>
+      </article>
+      <article class="metric-card">
+        <div class="flex items-start justify-between">
+          <div class="metric-icon">◌</div><span class="status-badge status-warning">Ambang 2.000</span>
+        </div>
+        <p class="metric-value" id="gas-value">—</p>
+        <p class="mt-1 text-sm font-semibold text-slate-500">Kualitas udara MQ</p>
+        <div class="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-amber-100/60"></div>
+      </article>
+      <article class="metric-card">
+        <div class="flex items-start justify-between">
+          <div class="metric-icon">🔔</div><span class="status-badge status-neutral">Perangkat</span>
+        </div>
+        <p class="metric-value" id="buzzer-value">—</p>
+        <p class="mt-1 text-sm font-semibold text-slate-500">Status buzzer</p>
+        <div class="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-lime-100/60"></div>
+      </article>
+    </section>
+    <section class="mt-5 grid gap-5 xl:grid-cols-[1.65fr_.8fr]">
+      <article class="panel">
+        <div class="mb-5 flex items-center justify-between">
+          <div>
+            <h3 class="section-title">Grafik sensor terbaru</h3>
+            <p class="mt-1 text-xs text-slate-400">Diperbarui otomatis setiap 2 detik</p>
+          </div><a href="/monitor" class="secondary-button px-3 py-2">Monitoring detail</a>
+        </div>
+        <div id="dashboard-chart" class="chart-host"></div>
+      </article>
+      <article class="panel">
+        <div class="mb-5">
+          <h3 class="section-title">Notifikasi kondisi</h3>
+          <p class="mt-1 text-xs text-slate-400">Muncul saat kondisi mulai abnormal</p>
+        </div>
+        <ul id="notification-list" class="space-y-3">
+          <li class="empty-state">Memuat notifikasi...</li>
+        </ul>
+      </article>
+    </section>
+    <section class="mt-5 grid gap-5 xl:grid-cols-[.8fr_1.4fr]">
+      <article class="panel">
+        <h3 class="section-title">Ringkasan hari ini</h3>
+        <div class="mt-5 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+          <div class="rounded-xl bg-farm-50 p-4">
+            <p class="text-xs font-bold text-slate-400">Rata-rata suhu</p>
+            <p id="avg-temperature" class="mt-2 text-2xl font-black">—</p>
+          </div>
+          <div class="rounded-xl bg-sky-50 p-4">
+            <p class="text-xs font-bold text-slate-400">Rata-rata kelembapan</p>
+            <p id="avg-humidity" class="mt-2 text-2xl font-black">—</p>
+          </div>
+          <div class="rounded-xl bg-red-50 p-4">
+            <p class="text-xs font-bold text-slate-400">Pembacaan abnormal</p>
+            <p id="abnormal-total" class="mt-2 text-2xl font-black text-red-600">—</p>
+          </div>
+        </div>
+      </article>
+      <article class="panel">
+        <div class="mb-5 flex items-center justify-between">
+          <h3 class="section-title">Data sensor terbaru</h3><a href="/laporan"
+            class="text-sm font-bold text-farm-700">Buka laporan →</a>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Waktu</th>
+                <th>Suhu</th>
+                <th>Kelembapan</th>
+                <th>Gas</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="recent-table">
+              <tr>
+                <td colspan="5">Memuat...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+  </main>
+  <script type="module" src="/js/dashboard.js"></script>
+</body>
+
+</html>

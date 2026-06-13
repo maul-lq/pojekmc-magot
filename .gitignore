@@ -6,3 +6,12 @@ Scripts/
 share/
 pyvenv.cfg
 .omx/
+.codex/
+
+node_modules/
+.env
+__pycache__/
+.pytest_cache/
+.superpowers/
+
+.pytest_cache

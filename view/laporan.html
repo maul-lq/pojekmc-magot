@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+  <meta charset="utf-8">
+  <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#185d3d">
+  <meta name="description" content="Laporan dan export data sensor Smart Maggot Farming.">
+  <title>Laporan Sensor · Smart Maggot Farming</title>
+  <link rel="stylesheet" href="/css/output.css">
+</head>
+
+<body class="app-shell">
+  <div id="mobile-overlay" class="mobile-overlay"></div>
+  <aside id="sidebar" class="sidebar"><button id="close-menu"
+      class="absolute right-4 top-4 text-farm-100 lg:hidden">✕</button>
+    <div class="mb-8 flex items-center gap-3 px-2">
+      <div class="grid h-12 w-12 place-items-center rounded-2xl bg-leaf text-2xl shadow-lg">🌱</div>
+      <div>
+        <p class="text-[10px] font-black tracking-[.18em] text-farm-200">SMART MAGGOT</p>
+        <h1 class="font-black">Farming Monitor</h1>
+      </div>
+    </div>
+    <nav class="space-y-2"><a data-nav class="sidebar-link" href="/dashboard">▦ &nbsp; Dashboard</a><a data-nav
+        class="sidebar-link" href="/monitor">◉ &nbsp; Monitoring</a><a data-nav class="sidebar-link" href="/laporan">▤
+        &nbsp; Laporan Sensor</a></nav>
+    <div class="mt-auto rounded-2xl bg-white/10 p-4">
+      <p class="text-xs text-farm-200">Masuk sebagai</p>
+      <p data-username class="mt-1 truncate font-extrabold">Admin</p><button id="logout-button"
+        class="mt-4 w-full rounded-xl bg-white/10 px-3 py-2 text-left text-sm font-bold hover:bg-white/20">↪ &nbsp;
+        Keluar</button>
+    </div>
+  </aside>
+  <main class="main-content">
+    <header class="mb-7 flex items-center gap-3"><button id="menu-button"
+        class="grid h-11 w-11 place-items-center rounded-xl bg-white shadow lg:hidden">☰</button>
+      <div>
+        <p class="text-xs font-black uppercase tracking-[.18em] text-farm-600">Analisis historis</p>
+        <h2 class="text-xl font-black text-slate-900 sm:text-2xl">Laporan Kondisi Sensor</h2>
+      </div>
+    </header>
+    <article class="panel mb-5">
+      <form id="report-form" class="flex flex-col gap-4 xl:flex-row xl:items-end"><label class="flex-1"><span
+            class="mb-2 block text-sm font-bold text-slate-700">Tanggal mulai</span><input id="start-date" class="field"
+            type="date" required></label><label class="flex-1"><span
+            class="mb-2 block text-sm font-bold text-slate-700">Tanggal akhir</span><input id="end-date" class="field"
+            type="date" required></label><button class="primary-button" type="submit">Tampilkan laporan</button><button
+          id="export-pdf" class="secondary-button" type="button">Download PDF</button><button id="export-excel"
+          class="secondary-button" type="button">Download Excel</button></form>
+      <p class="mt-3 text-xs text-slate-400">Rentang laporan maksimal tujuh hari dan kedua tanggal ikut dihitung.</p>
+      <div id="report-error" class="mt-4 hidden rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700"></div>
+    </article>
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+      <article class="metric-card">
+        <p class="text-xs font-bold text-slate-400">Rata-rata suhu</p>
+        <p id="temperature-average" class="metric-value">—</p>
+        <p id="temperature-range" class="mt-1 text-xs text-slate-400">—</p>
+      </article>
+      <article class="metric-card">
+        <p class="text-xs font-bold text-slate-400">Rata-rata lembap</p>
+        <p id="humidity-average" class="metric-value">—</p>
+        <p id="humidity-range" class="mt-1 text-xs text-slate-400">—</p>
+      </article>
+      <article class="metric-card">
+        <p class="text-xs font-bold text-slate-400">Rata-rata gas</p>
+        <p id="gas-average" class="metric-value">—</p>
+        <p id="gas-range" class="mt-1 text-xs text-slate-400">—</p>
+      </article>
+      <article class="metric-card">
+        <p class="text-xs font-bold text-slate-400">Jumlah data</p>
+        <p id="report-total" class="metric-value">—</p>
+        <p class="mt-1 text-xs text-slate-400">Pembacaan sensor</p>
+      </article>
+      <article class="metric-card">
+        <p class="text-xs font-bold text-slate-400">Data abnormal</p>
+        <p id="report-abnormal" class="metric-value text-red-600">—</p>
+        <p class="mt-1 text-xs text-slate-400">Suhu, gas, atau DHT</p>
+      </article>
+      <article class="metric-card">
+        <p class="text-xs font-bold text-slate-400">Buzzer aktif</p>
+        <p id="report-buzzer" class="metric-value text-amber-600">—</p>
+        <p class="mt-1 text-xs text-slate-400">Pembacaan ON</p>
+      </article>
+    </section>
+    <article class="panel mt-5">
+      <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 class="section-title">Data laporan sensor</h3>
+          <p class="mt-1 text-xs text-slate-400">Halaman tabel dibatasi agar tetap cepat dibuka</p>
+        </div><span id="page-info" class="status-badge status-neutral">Memuat...</span>
+      </div>
+      <div id="report-table-host" class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Waktu</th>
+              <th>Suhu</th>
+              <th>Kelembapan</th>
+              <th>Gas</th>
+              <th>Buzzer</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="report-table">
+            <tr>
+              <td colspan="6">Memuat...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-5 flex justify-end gap-3"><button id="prev-page" class="secondary-button" type="button">←
+          Sebelumnya</button><button id="next-page" class="secondary-button" type="button">Berikutnya →</button></div>
+    </article>
+  </main>
+  <script type="module" src="/js/laporan.js"></script>
+</body>
+
+</html>
