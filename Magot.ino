@@ -169,7 +169,7 @@ void loop() {
     Serial.println(gasValue);
 
     // Buzzer Logic (Hanya mengubah flag active, eksekusi suara ada di updateBuzzer)
-    if (!(temperature > 29 || temperature < 39) || gasValue > 2000) {
+    if (!(temperature > 29 && temperature < 39) || gasValue > 2000) {
       buzzerActive = true;
       buzzerStateStr = "ON";
       Serial.println("Buzzer Status: ACTIVE");
