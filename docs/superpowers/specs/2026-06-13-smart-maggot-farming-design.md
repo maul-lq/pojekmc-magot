@@ -47,6 +47,25 @@ The application does not include manual harvest or production records. “Lapora
 
 Use a single integrated Python application.
 
+The application framework and runtime are fixed as:
+
+- FastAPI for REST endpoints, page serving, and application lifecycle.
+- Uvicorn with exactly one worker.
+- Paho MQTT for the Mosquitto subscriber.
+- `mysql-connector-python` for MySQL access.
+- `openpyxl` for Excel export.
+- `reportlab` for PDF export.
+- Python dependencies recorded in `requirements.txt`.
+- Tailwind CSS dependencies and build commands recorded in `package.json`.
+
+The supported startup command is:
+
+```powershell
+python -m uvicorn backend.api:app --host 127.0.0.1 --port 8000 --workers 1
+```
+
+The MQTT subscriber starts once in the FastAPI lifespan and stops during application shutdown. Running multiple Uvicorn workers is not supported because it would create duplicate MQTT subscribers and duplicate stored readings. Future horizontal scaling would require moving MQTT ingestion into a separate service; that is outside this project scope.
+
 The backend:
 
 - Serves native HTML, compiled Tailwind CSS, and JavaScript assets.
@@ -144,13 +163,19 @@ New focused files may be created within `backend`, `js`, or `view` when keeping 
 - The first admin account is created automatically from:
   - `ADMIN_USERNAME`
   - `ADMIN_PASSWORD`
-- The password is never stored as plain text. It is hashed before insertion into MySQL.
+- `ADMIN_USERNAME` is required at startup. `ADMIN_PASSWORD` is required and must contain at least 12 characters when the configured initial admin does not exist. Startup fails with a clear error if required initial credentials are absent or invalid.
+- The password is never stored as plain text. It is hashed with Python's `hashlib.scrypt` using a random per-password salt before insertion into MySQL.
 - If the initial username already exists, startup must not overwrite its password.
-- Successful login creates a server-side session with a random opaque token.
+- Successful login creates a server-side session with a cryptographically random 32-byte opaque token.
+- Only a SHA-256 hash of the token combined with the required `SESSION_TOKEN_PEPPER` is stored in MySQL.
 - The browser receives the session token only through a cookie with:
   - `HttpOnly`
   - `SameSite=Lax`
   - `Secure` when configured for HTTPS
+- The cookie name is `maggot_session`, its path is `/`, and its default lifetime/`Max-Age` is eight hours.
+- Expired sessions are rejected and deleted during startup and opportunistically during authentication.
+- Login is limited to five failed attempts per 15 minutes for each IP-address and username pair. The rate limiter is in-memory because the supported runtime is a single process.
+- Cookie-authenticated state-changing requests validate that `Origin`, when present, matches the configured application origin. Login and logout accept only `POST`.
 - Logout invalidates the server-side session and clears the cookie.
 - All page routes except login, and all data/export endpoints, require a valid session.
 
@@ -190,6 +215,7 @@ Database: `db_mocom_maggot`
 | `temperature_abnormal` | Whether temperature violates ESP32 rule |
 | `gas_abnormal` | Whether gas violates ESP32 rule |
 | `has_problem` | Invalid/zero DHT reading marker |
+| `buzzer_inconsistent` | Reported buzzer differs from the valid calculated rule |
 | `received_at` | Server receipt timestamp |
 
 Indexes must support recent-reading lookup and date-range reports, especially on `received_at`.
@@ -205,7 +231,9 @@ Indexes must support recent-reading lookup and date-range reports, especially on
 | `message` | User-facing Indonesian message |
 | `created_at` | Notification timestamp |
 
-Notifications are created from abnormal readings. Repeated abnormal readings may be grouped or rate-limited in the presentation layer so the dashboard remains readable, while the original sensor readings remain complete.
+Notifications are created only when a condition transitions from inactive to active. A continuous abnormal condition therefore creates one onset notification, not a notification every two seconds. Separate transitions are tracked for temperature, gas, and DHT data problems. Buzzer state is presented as device status and does not create its own notification.
+
+Sensor readings are retained for 90 days by default. A scheduled daily cleanup inside the single application process deletes older readings, related notifications, and expired sessions. The retention period is configurable, but disabling retention is outside the supported default deployment.
 
 ## 8. Abnormal-Condition Rules
 
@@ -221,18 +249,46 @@ humidity has no abnormal threshold
 
 Additional data-quality behavior:
 
-- A DHT reading represented by `0` is stored for traceability and marked as a problem because `Magot.ino` uses zero after a DHT read error.
-- Missing keys, non-numeric sensor values, non-object JSON, and buzzer values other than `ON` or `OFF` are rejected and logged.
+- A DHT failure is identified only when both `temperature == 0` and `humidity == 0`, matching the fallback assignment in `Magot.ino`.
+- DHT-failure rows are stored for traceability and marked as a problem, but they are excluded from temperature/humidity minimum, maximum, average, and temperature-abnormal counts. They create a data-problem transition notification rather than a temperature notification.
+- Gas remains valid and can create a gas-abnormal notification even when the DHT reading failed.
+- The reported buzzer value is preserved. When DHT and gas values are valid, it is compared with the calculated ESP32 rule and `buzzer_inconsistent` records any mismatch. A mismatch is shown as a data/device warning but does not replace the reported buzzer value.
+- MQTT payload size is limited to 1,024 bytes.
+- Missing keys, non-object JSON, boolean sensor values, NaN/infinity, non-numeric sensor values, and buzzer values other than `ON` or `OFF` are rejected and logged.
+- Valid physical/input ranges are temperature `-40..80`, humidity `0..100`, and raw MQ gas `0..4095`.
 - MQTT ingestion errors must not terminate the API process.
 
 ## 9. REST API Contract
 
-Exact route names may follow existing project conventions, but the implementation must provide the following behavior:
+The route names below are fixed.
+
+Successful JSON responses use:
+
+```json
+{"ok": true, "data": {}}
+```
+
+Error responses use:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "machine_readable_code",
+    "message": "Pesan singkat dalam Bahasa Indonesia",
+    "details": {}
+  }
+}
+```
+
+Validation errors return `422`, unauthenticated requests return `401`, forbidden origin requests return `403`, missing resources return `404`, rate-limited login attempts return `429`, and unexpected service/database errors return `503` or `500` as appropriate.
+
+All API timestamps are RFC 3339 UTC strings. Sensor-history results sort newest first.
 
 ### Authentication
 
 - `POST /api/auth/login`
-  - Accept username and password.
+  - Accept JSON `{"username": "string", "password": "string"}`.
   - Return success and create session cookie.
 
 - `POST /api/auth/logout`
@@ -247,19 +303,26 @@ Exact route names may follow existing project conventions, but the implementatio
   - Return latest reading, abnormal flags, data age, and online/stale status.
 
 - `GET /api/sensors/history`
-  - Return bounded readings for charts and tables.
-  - Support date range and limit parameters.
+  - Return bounded readings for charts.
+  - Accept optional RFC 3339 UTC `start`, `end`, and `limit`.
+  - Default `limit` is 120 and maximum `limit` is 2,000.
 
 - `GET /api/dashboard/summary`
   - Return current cards, daily min/max/average values, abnormal counts, latest notifications, and recent readings.
 
 - `GET /api/notifications`
   - Return recent abnormal-condition notifications.
+  - Accept optional `limit`; default 20 and maximum 200.
 
 ### Reports
 
 - `GET /api/reports/summary`
   - Return statistics and abnormal-event counts for a requested date range.
+
+- `GET /api/reports/readings`
+  - Return paginated report-table readings.
+  - Accept required `start_date` and `end_date`, plus `page` and `page_size`.
+  - Default `page_size` is 100 and maximum is 500.
 
 - `GET /api/reports/export.pdf`
   - Download a sensor report for the requested date range.
@@ -267,7 +330,55 @@ Exact route names may follow existing project conventions, but the implementatio
 - `GET /api/reports/export.xlsx`
   - Download the same report data in Excel format.
 
-All API responses use a consistent JSON error shape and appropriate HTTP status codes.
+JSON endpoints use the consistent success/error envelopes and appropriate HTTP status codes. Successful export endpoints return authenticated binary download responses; export errors use the standard JSON error envelope.
+
+Core response data shapes are fixed as follows:
+
+```json
+{
+  "latest_reading": {
+    "id": 123,
+    "temperature": 32.4,
+    "humidity": 74.0,
+    "gas": 1840,
+    "buzzer": "OFF",
+    "temperature_abnormal": false,
+    "gas_abnormal": false,
+    "has_problem": false,
+    "buzzer_inconsistent": false,
+    "received_at": "2026-06-13T12:00:00Z"
+  },
+  "data_status": {
+    "state": "online",
+    "age_seconds": 2,
+    "stale_after_seconds": 10
+  }
+}
+```
+
+`GET /api/sensors/latest` returns the fields above. If no reading exists, `latest_reading` is `null` and `data_status.state` is `no_data`. The state becomes `stale` when the latest reading age exceeds the configurable threshold, defaulting to ten seconds.
+
+History and report-reading entries use the same reading fields. History data is returned as `{"readings": [], "count": 0}`. Paginated report readings are returned as:
+
+```json
+{
+  "readings": [],
+  "pagination": {
+    "page": 1,
+    "page_size": 100,
+    "total_items": 0,
+    "total_pages": 0
+  }
+}
+```
+
+Dashboard summary data contains `latest_reading`, `data_status`, `today_statistics`, `abnormal_counts`, `notifications`, and `recent_readings`. Report summary data contains `range`, per-sensor `minimum`, `maximum`, and `average`, plus counts for abnormal temperature, abnormal gas, DHT problems, buzzer-active readings, and buzzer inconsistencies. DHT-failure rows are excluded from DHT statistics as previously defined.
+
+Notification data contains `id`, `sensor_reading_id`, `notification_type`, `severity`, `message`, and `created_at`. Authenticated-user data contains only `id`, `username`, and `last_login_at`.
+
+Report endpoints accept `start_date` and `end_date` in `YYYY-MM-DD` using the configured display timezone. Both selected calendar dates are included by translating them to an inclusive UTC start and exclusive UTC end. The default range is today. The maximum report/export range is seven calendar days; larger or reversed ranges return `422`.
+
+PDF exports contain summary data and at most the newest 1,000 detailed readings so the document remains readable. Excel exports may contain all readings in the allowed seven-day range. Export generation must stream or use temporary files rather than retaining large output permanently.
 
 ## 10. Page and UI Design
 
@@ -331,6 +442,7 @@ The approved visual direction closely follows `Contoh UI.png`:
   - Common number, date, and status formatting
 - Page-specific JavaScript handles dashboard, monitoring, report, and login behavior.
 - Charts should use a lightweight browser charting approach suitable for native JavaScript. If an external chart library is used, it must be loaded in a clear and documented way and must not replace Tailwind CSS for layout.
+- Charts use native SVG or Canvas rendering implemented in project JavaScript, avoiding a runtime CDN dependency.
 - Monitoring requests run every two seconds while the page is visible and stop when it is hidden or unloaded.
 - The UI clearly distinguishes:
   - Normal reading
@@ -375,12 +487,32 @@ MQTT_PORT=1883
 MQTT_TOPIC=esp32/sensor_data
 ADMIN_USERNAME
 ADMIN_PASSWORD
-SESSION_SECRET
+SESSION_TOKEN_PEPPER
 ```
 
-Optional settings may include session lifetime, stale-data threshold, server host/port, and secure-cookie mode.
+`ADMIN_PASSWORD` is conditionally required when the configured initial admin does not exist. Optional settings may include session lifetime, stale-data threshold, server host/port, and secure-cookie mode.
 
 Secrets must not be committed to the repository.
+
+Additional supported configuration:
+
+```text
+DISPLAY_TIMEZONE=Asia/Jakarta
+SESSION_LIFETIME_HOURS=8
+STALE_AFTER_SECONDS=10
+COOKIE_SECURE=false
+APP_ORIGIN=http://127.0.0.1:8000
+DATA_RETENTION_DAYS=90
+MQTT_USERNAME
+MQTT_PASSWORD
+MQTT_TLS=false
+```
+
+MySQL database `db_mocom_maggot` must already exist and be accessible. The application creates or upgrades its required tables idempotently; it does not create the database itself.
+
+The default MQTT deployment assumes a trusted local network, matching the current empty credentials in `Magot.ino`. If MQTT credentials or TLS are configured, the backend uses them. Production use outside a trusted LAN requires Mosquitto authentication, topic ACLs restricted to `esp32/sensor_data`, and TLS.
+
+All database timestamps are stored in UTC. Display values, “today” boundaries, and report calendar dates use `DISPLAY_TIMEZONE`, defaulting to `Asia/Jakarta`.
 
 ## 14. Error Handling and Observability
 
@@ -400,14 +532,20 @@ Secrets must not be committed to the repository.
 - Payload validation rejects missing, malformed, and invalid values.
 - Abnormal temperature boundary tests cover `29`, values between `29` and `39`, and `39`.
 - Gas boundary tests cover `2000` and values above `2000`.
-- Zero DHT values are stored and marked as problems.
+- A paired zero DHT reading is stored, marked as a problem, excluded from DHT statistics, and does not create a temperature notification.
+- Buzzer inconsistencies are recorded without replacing the reported value.
+- Notifications are emitted once per inactive-to-active condition transition.
 - Login succeeds with the seeded admin credentials.
 - Login fails safely with invalid credentials.
 - Protected APIs reject unauthenticated requests.
 - Sessions can be invalidated by logout.
 - MySQL schema initialization is repeatable.
 - Date-range summary calculations are correct.
+- Date ranges honor display-timezone boundaries and the inclusive-calendar-date contract.
+- History pagination, API limits, report range limits, and export bounds are enforced.
 - PDF and Excel exports are generated for a known dataset.
+- Expired sessions and cookie security flags behave as specified.
+- MySQL schema initialization is repeatable and asserted by automated SQL checks.
 
 ### Frontend checks
 
@@ -421,6 +559,9 @@ Secrets must not be committed to the repository.
 
 - A sample MQTT payload reaches MySQL and becomes visible through the REST API.
 - REST responses reflect the same abnormal logic as `Magot.ino`.
+- MQTT reconnect behavior does not terminate the API.
+- The documented single-worker startup produces only one MQTT subscriber.
+- A temporary MySQL outage produces a controlled error and recovers after connectivity returns.
 - DBHub is used to confirm the final MySQL schema and representative stored rows.
 
 ## 16. Completion Criteria
@@ -435,4 +576,3 @@ The implementation is complete when:
 - The approved reference-inspired responsive design is implemented.
 - README contains setup, environment, MySQL, MQTT, Tailwind build, run, and test instructions.
 - Targeted tests and fresh verification checks pass.
-
