@@ -261,6 +261,8 @@ class Sistem:
 
         workbook = Workbook()
         summary_sheet = workbook.active
+        if summary_sheet is None:
+            summary_sheet = workbook.create_sheet("Ringkasan")
         summary_sheet.title = "Ringkasan"
         summary_sheet.append(["Laporan Sensor Smart Maggot Farming"])
         summary_sheet["A1"].font = Font(bold=True, size=16, color="FFFFFF")
@@ -345,7 +347,9 @@ class Sistem:
             ),
             Spacer(1, 0.3 * cm),
         ]
-        stats_rows = [["Sensor", "Minimum", "Maksimum", "Rata-rata"]]
+        stats_rows: list[list[Any]] = [
+            ["Sensor", "Minimum", "Maksimum", "Rata-rata"]
+        ]
         for sensor, values in summary["statistics"].items():
             stats_rows.append(
                 [sensor.title(), values["minimum"], values["maximum"], values["average"]]
@@ -364,9 +368,11 @@ class Sistem:
         )
         story.extend([stats_table, Spacer(1, 0.5 * cm)])
 
-        data_rows = [["Waktu UTC", "Suhu", "Lembap", "Gas", "Buzzer", "Status"]]
+        data_rows: list[list[Any]] = [
+            ["Waktu UTC", "Suhu", "Lembap", "Gas", "Buzzer", "Status"]
+        ]
         for row in rows:
-            status = []
+            status: list[str] = []
             if row["has_problem"]:
                 status.append("DHT bermasalah")
             if row["temperature_abnormal"]:

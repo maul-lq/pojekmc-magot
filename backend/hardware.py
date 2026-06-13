@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import paho.mqtt.client as mqtt
+from paho.mqtt.enums import CallbackAPIVersion
+from paho.mqtt.properties import Properties
+from paho.mqtt.reasoncodes import ReasonCode
 
 from backend.config import Settings, settings
 from backend.sistem import PayloadError, Sistem
@@ -15,7 +19,7 @@ class HardwareMQTT:
         self.sistem = sistem
         self.config = config
         self.client = mqtt.Client(
-            callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+            callback_api_version=CallbackAPIVersion.VERSION2,
             client_id="smart-maggot-backend",
         )
         self.client.on_connect = self._on_connect
@@ -45,18 +49,33 @@ class HardwareMQTT:
         self.client.loop_stop()
         self.client.disconnect()
 
-    def _on_connect(self, client: mqtt.Client, userdata: object, flags: object, reason_code: object, properties: object) -> None:
-        if int(reason_code) == 0:
+    def _on_connect(
+        self,
+        client: mqtt.Client,
+        userdata: Any,
+        flags: mqtt.ConnectFlags,
+        reason_code: ReasonCode,
+        properties: Properties | None,
+    ) -> None:
+        if not reason_code.is_failure:
             client.subscribe(self.config.mqtt_topic, qos=1)
             logger.info("MQTT tersambung dan berlangganan ke %s.", self.config.mqtt_topic)
         else:
             logger.error("MQTT gagal tersambung: %s", reason_code)
 
     @staticmethod
-    def _on_disconnect(client: mqtt.Client, userdata: object, flags: object, reason_code: object, properties: object) -> None:
+    def _on_disconnect(
+        client: mqtt.Client,
+        userdata: Any,
+        flags: mqtt.DisconnectFlags,
+        reason_code: ReasonCode,
+        properties: Properties | None,
+    ) -> None:
         logger.warning("MQTT terputus: %s. Paho akan mencoba tersambung kembali.", reason_code)
 
-    def _on_message(self, client: mqtt.Client, userdata: object, message: mqtt.MQTTMessage) -> None:
+    def _on_message(
+        self, client: mqtt.Client, userdata: Any, message: mqtt.MQTTMessage
+    ) -> None:
         try:
             reading_id = self.sistem.process_payload(message.payload)
             logger.info("Data sensor tersimpan dengan id=%s.", reading_id)

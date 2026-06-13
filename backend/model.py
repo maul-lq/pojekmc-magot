@@ -82,10 +82,13 @@ class Model:
         )
 
     def create_user(self, username: str, password_hash: str) -> int:
-        return self.db.execute(
+        user_id = self.db.execute(
             "INSERT INTO users (username, password_hash) VALUES (%s, %s)",
             (username, password_hash),
         )
+        if user_id is None:
+            raise RuntimeError("MySQL tidak mengembalikan id pengguna baru.")
+        return user_id
 
     def update_last_login(self, user_id: int) -> None:
         self.db.execute(
@@ -153,6 +156,8 @@ class Model:
                     ),
                 )
                 reading_id = cursor.lastrowid
+                if reading_id is None:
+                    raise RuntimeError("MySQL tidak mengembalikan id pembacaan sensor.")
                 for notification in notifications:
                     cursor.execute(
                         """
