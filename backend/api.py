@@ -59,9 +59,9 @@ def ensure_initial_admin() -> None:
     existing = model.get_user_by_username(settings.admin_username)
     if existing:
         return
-    if len(settings.admin_password) < 12:
+    if len(settings.admin_password) < 8:
         raise RuntimeError(
-            "ADMIN_PASSWORD minimal 12 karakter diperlukan untuk membuat admin awal."
+            "ADMIN_PASSWORD minimal 8 karakter diperlukan untuk membuat admin awal."
         )
     model.create_user(settings.admin_username, hash_password(settings.admin_password))
     logger.info("Admin awal '%s' berhasil dibuat.", settings.admin_username)
